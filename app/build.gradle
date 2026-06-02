@@ -1,0 +1,61 @@
+plugins {
+    id 'java-library'
+    id 'org.springframework.boot'
+    alias(libs.plugins.jib)
+}
+
+dependencies {
+    implementation project(':base')
+    implementation project(':providers:anthropic')
+    implementation project(':providers:google')
+    implementation project(':providers:ollama')
+    implementation project(':providers:openai')
+    implementation project(':providers:qwen')
+
+    implementation project(':plugins:discord')
+    implementation project(':plugins:telegram')
+    implementation project(':plugins:playwright')
+    implementation project(':plugins:brave')
+    implementation project(':plugins:wechat')
+
+    implementation 'org.springframework.ai:spring-ai-client-chat'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-restclient'
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation(libs.pebble.spring.starter)
+
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'com.h2database:h2'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jdbc-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-restclient-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-websocket-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+}
+
+bootRun {
+    workingDir = rootProject.projectDir
+}
+
+jib {
+    to {
+        image = 'jobrunr.io/javaclaw'
+        tags = ['latest']
+    }
+    extraDirectories {
+        paths {
+            path {
+                from = rootProject.file('workspace')
+                into = '/workspace'
+            }
+            permissions = [
+                    '/workspace': '755'
+            ]
+        }
+    }
+}

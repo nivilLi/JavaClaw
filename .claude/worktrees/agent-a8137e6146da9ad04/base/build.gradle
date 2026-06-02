@@ -1,0 +1,26 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.modulith:spring-modulith-starter-core'
+    implementation(libs.jobrunr.spring.starter)
+    implementation 'org.apache.commons:commons-lang3'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+
+    // No idea?
+    runtimeOnly(libs.netty.resolver.dns.native.macos)
+
+    implementation 'org.springframework.ai:spring-ai-client-chat'
+    implementation 'org.springframework.ai:spring-ai-starter-mcp-client'
+
+    implementation(libs.spring.ai.agent.utils)
+    implementation(libs.spring.ai.tool.search)
+    implementation(libs.spring.ai.tool.search.lucene)
+
+    runtimeOnly 'com.h2database:h2'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.awaitility:awaitility'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+}
