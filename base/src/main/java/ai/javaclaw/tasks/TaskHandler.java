@@ -41,8 +41,8 @@ public class TaskHandler {
             LOGGER.info("Starting task: {}", task.getName());
             String agentInput = formatTaskForAgent(inProgress);
             TaskResult result = agent.prompt(taskId, agentInput, TaskResult.class);
-            taskRepository.save(inProgress.withFeedback(result.feedback()).withStatus(result.newStatus()));
-            notifyUser(task.getName(), result);
+            Task finished = taskRepository.save(inProgress.withFeedback(result.feedback()).withStatus(result.newStatus()));
+            notifyUser(finished, result);
             LOGGER.info("Finished task: {} with status {}", task.getName(), result.newStatus());
         } catch (Exception e) {
             taskRepository.save(inProgress.withStatus(Task.Status.todo));
@@ -50,19 +50,21 @@ public class TaskHandler {
         }
     }
 
-    // TODO: currently we lose the conversationId when moving to a channel. Should channel registry track this?
-    private void notifyUser(String taskName, TaskResult result) {
+    private void notifyUser(Task task, TaskResult result) {
         try {
-            Channel channel = channelRegistry.getLatestChannel();
+            Channel channel = task.getChannelName() != null
+                    ? channelRegistry.getChannel(task.getChannelName())
+                    : channelRegistry.getLatestChannel();
             ofNullable(channel).ifPresent(c -> {
                 if (completed == result.newStatus) {
-                    channel.sendMessage("📋 Task '%s' completed:\n%s".formatted(taskName, result.feedback()));
+                    c.sendMessage("📋 Task '%s' completed:\n%s".formatted(task.getName(), result.feedback()));
                 } else if (awaiting_human_input == result.newStatus) {
-                    channel.sendMessage("📋 Task '%s' is waiting for your input:\n%s".formatted(taskName, result.feedback()));
+                    c.sendMessage("📋 Task '%s' is waiting for your input:\n%s".formatted(task.getName(), result.feedback()));
+                    channelRegistry.setPendingTask(c.getName(), task.getId());
                 }
             });
         } catch (Exception e) {
-            LOGGER.warn("Failed to notify user about task '{}': {}", taskName, e.getMessage());
+            LOGGER.warn("Failed to notify user about task '{}': {}", task.getName(), e.getMessage());
         }
     }
 

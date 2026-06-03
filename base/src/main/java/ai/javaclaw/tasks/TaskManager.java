@@ -1,5 +1,6 @@
 package ai.javaclaw.tasks;
 
+import ai.javaclaw.channels.ChannelRegistry;
 import org.jobrunr.jobs.Job;
 import org.jobrunr.jobs.states.StateName;
 import org.jobrunr.scheduling.JobScheduler;
@@ -21,22 +22,26 @@ public class TaskManager {
     private final JobScheduler jobScheduler;
     private final StorageProvider storageProvider;
     private final TaskRepository taskRepository;
+    private final ChannelRegistry channelRegistry;
 
-    public TaskManager(JobScheduler jobScheduler, StorageProvider storageProvider, TaskRepository taskRepository) {
+    public TaskManager(JobScheduler jobScheduler, StorageProvider storageProvider, TaskRepository taskRepository, ChannelRegistry channelRegistry) {
         this.jobScheduler = jobScheduler;
         this.storageProvider = storageProvider;
         this.taskRepository = taskRepository;
+        this.channelRegistry = channelRegistry;
     }
 
     public void create(String name, String description) {
-        Task task = taskRepository.save(Task.newTask(name, description));
+        String channelName = channelRegistry.getLatestChannel() != null ? channelRegistry.getLatestChannel().getName() : null;
+        Task task = taskRepository.save(Task.newTask(name, description, channelName));
         jobScheduler.<TaskHandler>enqueue(x -> x.executeTask(task.getId()));
         log.info("Task '{}' ({}) has been created.", task.getName(), task.getId());
     }
 
     public void schedule(LocalDateTime executionTime, String name, String description) {
+        String channelName = channelRegistry.getLatestChannel() != null ? channelRegistry.getLatestChannel().getName() : null;
         Instant createdAt = executionTime.atZone(ZoneId.systemDefault()).toInstant();
-        Task task = taskRepository.save(Task.newTask(name, createdAt, description));
+        Task task = taskRepository.save(Task.newTask(name, createdAt, description, channelName));
         jobScheduler.<TaskHandler>schedule(executionTime, x -> x.executeTask(task.getId()));
         log.info("Task '{}' ({}) has been scheduled at {}.", task.getName(), task.getId(), executionTime);
     }
@@ -69,8 +74,24 @@ public class TaskManager {
     }
 
     public void createTaskFromRecurringTask(RecurringTask recurringTask) {
-        Task task = taskRepository.save(Task.newTask(recurringTask.getName(), recurringTask.getDescription()));
+        String channelName = channelRegistry.getLatestChannel() != null ? channelRegistry.getLatestChannel().getName() : null;
+        Task task = taskRepository.save(Task.newTask(recurringTask.getName(), recurringTask.getDescription(), channelName));
         jobScheduler.<TaskHandler>enqueue(x -> x.executeTask(task.getId()));
         log.info("Task '{}' ({}) has been created from recurring task.", task.getName(), task.getId());
+    }
+
+    public void resumeWithUserReply(String taskId, String userReply) {
+        Task task = taskRepository.getTaskById(taskId);
+        // Append user reply to description then reset status to todo so TaskHandler can pick it up
+        Task updated = new ai.javaclaw.tasks.Task(
+                task.getId(),
+                task.getName(),
+                task.getCreatedAt(),
+                Task.Status.todo,
+                task.getDescription() + "\n\nUser reply: " + userReply,
+                task.getChannelName());
+        taskRepository.save(updated);
+        jobScheduler.<TaskHandler>enqueue(x -> x.executeTask(taskId));
+        log.info("Task '{}' ({}) has been resumed with user reply.", task.getName(), taskId);
     }
 }

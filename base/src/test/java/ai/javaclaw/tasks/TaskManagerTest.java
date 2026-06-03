@@ -57,7 +57,7 @@ class TaskManagerTest {
                 .initialize()
                 .getJobScheduler();
 
-        taskManager = new TaskManager(jobScheduler, storageProvider, taskRepositoryMock);
+        taskManager = new TaskManager(jobScheduler, storageProvider, taskRepositoryMock, channelRegistryMock);
     }
 
     @AfterEach

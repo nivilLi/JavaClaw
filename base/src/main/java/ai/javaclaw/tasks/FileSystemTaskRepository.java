@@ -35,7 +35,7 @@ public class FileSystemTaskRepository implements TaskRepository {
     public Task save(Task task) {
         Path path = ofNullable(task.getId()).map(Path::of).orElseGet(() -> buildTaskPath(task));
         writeTaskFile(path, task);
-        return new Task(path.toAbsolutePath().toString(), task.getName(), task.getCreatedAt(), task.getStatus(), task.getDescription());
+        return new Task(path.toAbsolutePath().toString(), task.getName(), task.getCreatedAt(), task.getStatus(), task.getDescription(), task.getChannelName());
     }
 
     @Override
@@ -48,7 +48,8 @@ public class FileSystemTaskRepository implements TaskRepository {
                     fm.get("task"),
                     Instant.parse(fm.get("createdAt")),
                     Task.Status.valueOf(fm.get("status")),
-                    fm.getOrDefault("description", ""));
+                    fm.getOrDefault("description", ""),
+                    fm.getOrDefault("channelName", null));
         } catch (IOException e) {
             throw new TaskNotFoundException(id, e);
         }
@@ -131,6 +132,9 @@ public class FileSystemTaskRepository implements TaskRepository {
         fm.put("createdAt", task.getCreatedAt().toString());
         fm.put("status", task.getStatus().toString());
         fm.put("description", task.getDescription());
+        if (task.getChannelName() != null) {
+            fm.put("channelName", task.getChannelName());
+        }
         writeFile(path, YamlParser.serialize(new YamlDocument(fm, null)));
     }
 
